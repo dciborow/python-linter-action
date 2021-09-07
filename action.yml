@@ -1,5 +1,5 @@
-name: 'Run Pylint with reviewdog'
-description: '🐶 Run Pylint with reviewdog on pull requests to improve code review experience.'
+name: 'Run Pylint'
+description: 'Run Pylint.'
 author: 'dciborow'
 inputs:
   workdir:
