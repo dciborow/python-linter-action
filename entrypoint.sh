@@ -1,24 +1,31 @@
-#!/bin/sh
-set -e
+#!/bin/bash
+set -eu # Increase bash strictness
 
-if [ -n "${GITHUB_WORKSPACE}" ]; then
+if [[ -n "${GITHUB_WORKSPACE}" ]]; then
   cd "${GITHUB_WORKSPACE}" || exit
 fi
 
-# Sample: Get star count of INPUT_REPO.
-get_repo() {
-  if [ -n "${INPUT_GITHUB_TOKEN}" ]; then
-    echo "Use INPUT_GITHUB_TOKEN to get release data." >&2
-    curl -s -H "Authorization: token ${INPUT_GITHUB_TOKEN}" "https://api.github.com/repos/${INPUT_REPO}"
-  else
-    echo "INPUT_GITHUB_TOKEN is not available. Subscequent GitHub API call may fail due to API limit." >&2
-    curl -s "https://api.github.com/repos/${INPUT_REPO}"
-  fi
-}
-STAR_COUNT=$(get_repo | jq -r '.stargazers_count')
-if [ -z "${STAR_COUNT}" ] || [ "${STAR_COUNT}" = "null" ]; then
-  echo "cannot get star count from ${INPUT_REPO}"
+export REVIEWDOG_GITHUB_API_TOKEN="${INPUT_GITHUB_TOKEN}"
+
+export REVIEWDOG_VERSION=v0.13.0
+
+echo "[action-pylint] Installing reviewdog..."
+wget -O - -q https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh | sh -s -- -b /tmp "${REVIEWDOG_VERSION}"
+
+if [[ "$(which pylint)" == "" ]]; then
+  echo "[action-pylint] Installing pylint package..."
+  python -m pip install --upgrade pylint
+fi
+echo "[action-pylint] pylint version:"
+pylint --version
+
+echo "[action-pylint] Checking python code with the pylint linter and reviewdog..."
+exit_val="0"
+pylint --rcfile ${INPUT_PYLINT_RC} -s n ${INPUT_WORKDIR} 2>&1
+
+echo "[action-pylint] Clean up reviewdog..."
+rm /tmp/reviewdog
+
+if [[ "${exit_val}" -ne '0' ]]; then
   exit 1
 fi
-
-echo "::set-output name=star::${STAR_COUNT}"
